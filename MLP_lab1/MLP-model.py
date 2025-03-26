@@ -1,95 +1,114 @@
-# 模型部分应允许自定义隐藏层大小、激活函数类型，支持通过反向传播计算给定损失的梯度，不能使用pytorch或tensorflow等深度学习框架
+# 模型部分应允许自定义隐藏层大小、激活函数类型，支持通过反向传播计算给定损失的梯度
 
 import numpy as np
 
 class MLP:
     def __init__(self, input_size, hidden_sizes, output_size, activation='relu'):
+        # Initialize the model with given sizes and activation function
         self.input_size = input_size
         self.hidden_sizes = hidden_sizes
         self.output_size = output_size
-        self.activation = self.get_activation(activation)
-        self.weights = self.initialize_weights()
+        self.activation = activation
+        
+        self.layers = len(hidden_sizes) + 1
+        self.weights = []
+        self.biases = []
+        sizes = [input_size] + hidden_sizes + [output_size]
 
-    def get_activation(self, activation_type):
-        if activation_type == 'relu':
-            return self.relu
-        elif activation_type == 'sigmoid':
-            return self.sigmoid
+        for i in range(len(sizes) - 1):
+            # Initialize weights with small random values
+            self.weights.append(np.random.randn(sizes[i], sizes[i + 1]) * 0.01)
+            # Initialize biases with zeros
+            self.biases.append(np.zeros((1, sizes[i + 1])))
+    
+    def _activate(self, x):
+        # Activation function(relu, leaky_relu, sigmoid)
+        if self.activation == 'relu':
+            return np.maximum(0, x)
+        elif self.activation == 'leaky_relu':
+            return np.where(x > 0, x, 0.01 * x)  # Leaky ReLU with a slope of 0.01
+        elif self.activation == 'sigmoid':
+            return 1 / (1 + np.exp(-x))
         else:
-            raise ValueError("Unsupported activation function")
+            raise ValueError(f'Unknown activation function: {self.activation}')
 
-    def initialize_weights(self):
-        weights = []
-        layers = [self.input_size] + self.hidden_sizes + [self.output_size]
-        for i in range(len(layers) - 1):
-            fan_in = layers[i]
-            fan_out = layers[i + 1]
-            std = np.sqrt(2.0 / (fan_in + fan_out))
-            weight = np.random.normal(loc=0.0, scale=std, size=(fan_in, fan_out))
-            weights.append(weight)
-        return weights
-
-
-    def relu(self, x):
-        return np.maximum(0, x)
-
-    def sigmoid(self, x):
-        return 1 / (1 + np.exp(-x))
+    def _activate_derivative(self, x):
+        # Derivative of activation function
+        if self.activation == 'relu':
+            return np.where(x > 0, 1, 0)
+        elif self.activation == 'leaky_relu':
+            return np.where(x > 0, 1, 0.01)  # Derivative of Leaky ReLU
+        elif self.activation == 'sigmoid':
+            sig = 1 / (1 + np.exp(-x))
+            return sig * (1 - sig)
+        else:
+            raise ValueError(f'Unknown activation function: {self.activation}')
 
     def forward(self, x):
-        activations = [x]
-        for weight in self.weights[:-1]:
-            x = np.dot(x, weight)
-            x = self.activation(x)
-            activations.append(x)
-        x = np.dot(x, self.weights[-1])
-        activations.append(x)
-        return activations
+        """
+        Forward pass.
 
-    def backward(self, activations, loss_gradient):
-        gradients = []
-        dActivations = activations[:]
-        dActivations[-1] = loss_gradient
-        for i in range(len(self.weights) - 1, -1, -1):
-            gradients.append(np.dot(activations[i].T, dActivations[i + 1]))
-            if i != 0:
-                dActivations[i] = np.multiply(np.dot(dActivations[i + 1], self.weights[i].T), self.activation_derivative(activations[i]))
+        :param x: Input data, shape (batch_size, input_size).
+        :return: Output predictions.
+        """
+        self.inputs = []  # Store intermediate inputs
+        self.outputs = []  # Store intermediate outputs
 
-        gradients.reverse()
-        return gradients
+        # Forward through layers
+        current_activation = x
+        self.inputs.append(current_activation)
 
-    def activation_derivative(self, x):
-        if self.activation == self.relu:
-            return np.where(x > 0, 1, 0)
-        elif self.activation == self.sigmoid:
-            return self.sigmoid(x) * (1 - self.sigmoid(x))
+        for w, b in zip(self.weights[:-1], self.biases[:-1]):
+            z = np.dot(current_activation, w) + b
+            current_activation = self._activate(z)
+            self.inputs.append(z)
+            self.outputs.append(current_activation)
 
-    def update_weights(self, gradients, learning_rate):
-        for i in range(len(self.weights)):
-            self.weights[i] -= learning_rate * gradients[i]
+        # Final output layer (softmax)
+        z = np.dot(current_activation, self.weights[-1]) + self.biases[-1]
+        self.inputs.append(z)
+        exp_z = np.exp(z - np.max(z, axis=1, keepdims=True))  # Numerical stability
+        final_output = exp_z / np.sum(exp_z, axis=1, keepdims=True)
+        self.outputs.append(final_output)
 
-    def compute_loss(self, y_true, y_pred):
-        return np.mean((y_true - y_pred) ** 2)
+        return final_output
 
-    def train(self, x, y, epochs, learning_rate):
-        for epoch in range(epochs):
-            activations = self.forward(x)
-            loss = self.compute_loss(y, activations[-1])
-            loss_gradient = 2 * (activations[-1] - y) / len(y)
-            gradients = self.backward(activations, loss_gradient)
-            self.update_weights(gradients, learning_rate)
-            if epoch % 100 == 0:
-                print(f"Epoch {epoch}, Loss: {loss}")
+    def backward(self, x, y, learning_rate=0.01, reg_lambda=0.01):
+        """
+        Backward pass (computing gradients and updating parameters).
 
-    def predict(self, x):
-        activations = self.forward(x)
-        return activations[-1]
+        :param x: Input data, shape (batch_size, input_size).
+        :param y: True labels, one-hot encoded, shape (batch_size, output_size).
+        :param learning_rate: Learning rate for SGD.
+        :param reg_lambda: L2 regularization parameter.
+        """
+        # Compute loss gradient (cross-entropy loss)
+        batch_size = y.shape[0]
+        final_output = self.outputs[-1]
+        dz = final_output - y  # Loss derivative for the last layer
 
-# 示例使用
-if __name__ == "__main__":
-    mlp = MLP(input_size=3, hidden_sizes=[4, 4], output_size=1, activation='relu')
-    x_train = np.random.randn(10, 3)
-    y_train = np.random.randn(10, 1)
-    mlp.train(x_train, y_train, epochs=1000, learning_rate=0.01)
-    predictions = mlp.predict(x_train)
-    print("Predictions:", predictions)
+        # Backward through layers
+        for i in reversed(range(self.layers)):
+            dw = np.dot(self.inputs[i].T, dz) / batch_size + reg_lambda * self.weights[i] / batch_size
+            db = np.sum(dz, axis=0, keepdims=True) / batch_size
+
+            # Update parameters
+            self.weights[i] -= learning_rate * dw
+            self.biases[i] -= learning_rate * db
+
+            if i > 0:  # Don't compute delta for input layer
+                dz = np.dot(dz, self.weights[i].T) * self._activate_derivative(self.inputs[i])
+
+    def compute_loss(self, y_pred, y_true, reg_lambda):
+        """
+        Compute the loss function value (cross-entropy + L2 regularization).
+
+        :param y_pred: Predictions from the model.
+        :param y_true: Ground truth labels, one-hot encoded.
+        :param reg_lambda: L2 regularization parameter.
+        :return: Loss value.
+        """
+        batch_size = y_true.shape[0]
+        cross_entropy_loss = -np.sum(y_true * np.log(y_pred + 1e-8)) / batch_size
+        l2_regularization = reg_lambda / 2 * sum(np.sum(w ** 2) for w in self.weights)
+        return cross_entropy_loss + l2_regularization
