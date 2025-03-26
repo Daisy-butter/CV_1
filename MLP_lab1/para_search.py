@@ -4,8 +4,9 @@ from train import Trainer
 from MLP_model import MLP
 
 lr = 0.01
-hidden_sizes = [64, 32]
-reg_strength = 1e-3
-epochs = 20
+lr_decay = 0.95
+hidden_sizes = [128, 64]
+reg_strength = 1e-4
+epochs = 50
 batch_size = 128
 print_every = 5
