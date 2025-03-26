@@ -6,6 +6,7 @@ import pickle
 import urllib.request
 import tarfile
 from MLP_model import MLP
+from config import Hyperparameters as hp
 
 class CIFAR10Loader:
     def __init__(self, data_dir='cifar-10-batches-py'):
@@ -52,7 +53,7 @@ class CIFAR10Loader:
         return X, y
 
 class Trainer:
-    def __init__(self, model, learning_rate=0.01, lr_decay=0.95, reg_strength=1e-4):
+    def __init__(self, model, learning_rate=hp.LEARNING_RATE, lr_decay=hp.LR_DECAY, reg_strength=hp.REG_STRENGTH):
         self.model = model
         self.learning_rate = learning_rate
         self.lr_decay = lr_decay
@@ -81,7 +82,7 @@ class Trainer:
             reg_loss += self.reg_strength * np.sum(w**2)
         return data_loss + reg_loss
 
-    def train(self, X_train, y_train, X_val, y_val, epochs=100, batch_size=128, print_every=10):
+    def train(self, X_train, y_train, X_val, y_val, epochs=hp.EPOCHS, batch_size=hp.BATCH_SIZE, print_every=hp.PRINT_EVERY):
         num_train = X_train.shape[0]
         for epoch in range(epochs):
             perm = np.random.permutation(num_train)
@@ -112,7 +113,7 @@ class Trainer:
             val_accuracy = self.compute_accuracy(val_logits, y_val)
 
             # Learning rate decay
-            self.learning_rate *= self.lr_decay
+            hp.update_learning_rate()
 
             # Save the best weights based on validation loss
             if val_loss < self.best_val_loss:
@@ -133,7 +134,7 @@ class Trainer:
         y_pred = np.argmax(self.softmax(logits), axis=1)
         return np.mean(y_pred == y)
 
-    def save_model(self, save_dir='best_model'):
+    def save_model(self, save_dir=hp.MODEL_SAVE_DIR):
         # Save model weights and biases
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
@@ -141,45 +142,9 @@ class Trainer:
         np.save(os.path.join(save_dir, 'biases.npy'), self.best_biases)
         print(f"Best model saved to {save_dir}")
 
-    def load_model(self, load_dir='best_model'):
+    def load_model(self, load_dir=hp.MODEL_SAVE_DIR):
         # Load model weights and biases
         self.model.weights = np.load(os.path.join(load_dir, 'weights.npy'), allow_pickle=True)
         self.model.biases = np.load(os.path.join(load_dir, 'biases.npy'), allow_pickle=True)
         print(f"Model loaded from {load_dir}")
 
-def main():
-    # Load CIFAR-10
-    data_loader = CIFAR10Loader()
-    cifar_url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
-    data_loader.download_and_extract(cifar_url)
-
-    # Load and preprocess data
-    X_train, y_train, X_test, y_test = data_loader.load_data()
-    X_train, y_train = data_loader.preprocess(X_train, y_train)
-    X_test, y_test = data_loader.preprocess(X_test, y_test)
-
-    # Split training data into training and validation sets
-    num_val = int(0.1 * len(X_train))
-    X_val, y_val = X_train[:num_val], y_train[:num_val]
-    X_train, y_train = X_train[num_val:], y_train[num_val:]
-
-    # Initialize model, here we can modify the hidden layer sizes and activation function
-    input_size = 32 * 32 * 3
-    hidden_sizes = [128, 64]  # Example hidden layer sizes
-    output_size = 10  # CIFAR-10 has 10 classes
-    model = MLP(input_size, hidden_sizes, output_size, activation='relu')  # Example activation function
-
-    # Initialize trainer
-    trainer = Trainer(model, learning_rate=0.01, lr_decay=0.95, reg_strength=1e-4)
-
-    # Prepare data by flattening image inputs
-    X_train = X_train.reshape(X_train.shape[0], -1)  # Flatten image data for MLP input
-    X_val = X_val.reshape(X_val.shape[0], -1)
-
-    # Train the model, mini-batch SGD
-    trainer.train(X_train, y_train, X_val, y_val, epochs=50, batch_size=128, print_every=5)
-
-    print("Training completed. Model weights and biases have been saved.")
-
-if __name__ == "__main__":
-    main()

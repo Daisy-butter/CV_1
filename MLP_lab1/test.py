@@ -4,6 +4,7 @@ import numpy as np
 import os
 from MLP_model import MLP
 from train import CIFAR10Loader
+from config import Hyperparameters as hp
 
 class Tester:
     def __init__(self, model):
@@ -43,12 +44,13 @@ def main():
 
     # Define model structure (same as used during training)
     input_size = 32 * 32 * 3
-    hidden_sizes = [128, 64]  # Example hidden layer sizes
+    hidden_sizes = hp.HIDDEN_SIZES  # Example hidden layer sizes
     output_size = 10  # CIFAR-10 has 10 classes
-    model = MLP(input_size, hidden_sizes, output_size, activation='relu')  # Example activation function
+    activation = 'leaky_relu'
+    model = MLP(input_size, hidden_sizes, output_size, activation)  # Example activation function
 
     # Load trained model weights and biases
-    load_dir = 'best_model'  # Directory containing the trained model
+    load_dir = hp.MODEL_SAVE_DIR  # Directory containing the trained model
     try:
         model.weights = np.load(os.path.join(load_dir, 'weights.npy'), allow_pickle=True)
         model.biases = np.load(os.path.join(load_dir, 'biases.npy'), allow_pickle=True)

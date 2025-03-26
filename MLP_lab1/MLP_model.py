@@ -1,23 +1,24 @@
 # 模型部分应允许自定义隐藏层大小、激活函数类型，支持通过反向传播计算给定损失的梯度
 
 import numpy as np
+from config import Hyperparameters as hp
 
 class MLP:
-    def __init__(self, input_size, hidden_sizes, output_size, activation='relu'):
+    def __init__(self, input_size, hidden_sizes, output_size, activation):
         valid_activations = ['relu', 'leaky_relu', 'sigmoid']
         if activation not in valid_activations:
             raise ValueError(f"Invalid activation function. Choose from {valid_activations}.")
         
         # Initialize the model with given sizes and activation function
         self.input_size = input_size
-        self.hidden_sizes = hidden_sizes
+        self.hidden_sizes = hp.HIDDEN_SIZES
         self.output_size = output_size
         self.activation = activation
         
-        self.layers = len(hidden_sizes) + 1
+        self.layers = len(hp.HIDDEN_SIZES) + 1
         self.weights = []
         self.biases = []
-        sizes = [input_size] + hidden_sizes + [output_size]
+        sizes = [input_size] + hp.HIDDEN_SIZES + [output_size]
 
         for i in range(len(sizes) - 1):
             # Initialize weights with small random values
