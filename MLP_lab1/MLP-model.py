@@ -4,6 +4,10 @@ import numpy as np
 
 class MLP:
     def __init__(self, input_size, hidden_sizes, output_size, activation='relu'):
+        valid_activations = ['relu', 'leaky_relu', 'sigmoid']
+        if activation not in valid_activations:
+            raise ValueError(f"Invalid activation function. Choose from {valid_activations}.")
+        
         # Initialize the model with given sizes and activation function
         self.input_size = input_size
         self.hidden_sizes = hidden_sizes
@@ -62,24 +66,24 @@ class MLP:
         self.outputs.append(z)  # Append logits
     # Return logits instead of applying softmax here
         return z
-    
+
     def backward(self, x, y):
-        batch_size = y.shape[0]  # batch_size是y的行数，实现SGD时可能需要修改
+        batch_size = y.shape[0]  # batch_size 是 y 的行数
         final_output = self.outputs[-1]  # 获取最后一层的输出
         dz = final_output - y  # Loss derivative for the last layer
 
         d_weights = []
         d_biases = []
-
     # Backward through layers to calculate gradients
         for i in reversed(range(self.layers)):
             dw = np.dot(self.inputs[i].T, dz) / batch_size  # Gradient for weights
             db = np.sum(dz, axis=0, keepdims=True) / batch_size  # Gradient for biases
 
-            d_weights.insert(0, dw)
-            d_biases.insert(0, db)
+            d_weights.append(dw)  # Append to the end of the list
+            d_biases.append(db)
 
             if i > 0:  # Compute dz for the previous layer
                 dz = np.dot(dz, self.weights[i].T) * self._activate_derivative(self.inputs[i])
 
-        return d_weights, d_biases
+        # Reverse the lists before returning to keep the order correct
+        return list(reversed(d_weights)), list(reversed(d_biases))
