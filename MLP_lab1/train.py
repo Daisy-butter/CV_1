@@ -84,6 +84,10 @@ class Trainer:
         accuracy = np.mean(y_pred == y)
         return accuracy
 
+    def update_weights(self, gradient_weights, gradient_biases):
+        for j in range(len(self.model.weights)):  # 遍历每一层的权重
+            self.model.weights[j] -= self.learning_rate * (gradient_weights[j] + self.reg_strength * self.model.weights[j])  # L2 正则化
+            self.model.biases[j] -= self.learning_rate * gradient_biases[j]
 
     def train(self, X_train, y_train, X_val, y_val, epochs=hp.EPOCHS, batch_size=hp.BATCH_SIZE, print_every=hp.PRINT_EVERY):
         num_train = X_train.shape[0]
