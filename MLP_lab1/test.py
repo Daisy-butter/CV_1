@@ -3,6 +3,8 @@ import os
 from MLP_model import MLP
 from train import CIFAR10Loader
 from config import Hyperparameters as hp
+import torch
+from torchvision import datasets, transforms
 
 
 class Tester:
@@ -29,14 +31,23 @@ class Tester:
 
 
 def main():
-    # Load CIFAR-10
-    data_loader = CIFAR10Loader()
-    cifar_url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
-    data_loader.download_and_extract(cifar_url)
+    import torch
+    from torchvision import datasets, transforms
 
-    # Load and preprocess test data
-    _, _, X_test, y_test = data_loader.load_data()
-    X_test, y_test = data_loader.preprocess(X_test, y_test)
+    # Load CIFAR-10 using PyTorch's torchvision
+    transform = transforms.Compose([
+        transforms.ToTensor(),  # Convert image to tensor
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize to range [-1, 1]
+    ])
+    
+    # Download and preprocess CIFAR-10 test data
+    test_data = datasets.CIFAR10(root="./data", train=False, download=True, transform=transform)
+    test_loader = torch.utils.data.DataLoader(test_data, batch_size=len(test_data), shuffle=False)
+    
+    # Load test data into numpy arrays
+    X_test, y_test = next(iter(test_loader))
+    X_test = X_test.numpy()
+    y_test = y_test.numpy()
 
     # Flatten test data
     X_test = X_test.reshape(X_test.shape[0], -1)

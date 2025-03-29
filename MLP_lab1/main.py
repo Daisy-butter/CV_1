@@ -6,22 +6,50 @@ import tarfile
 from MLP_model import MLP
 from train import CIFAR10Loader, Trainer
 from config import Hyperparameters as hp
+import torch
+from torchvision import datasets, transforms
+from torch.utils.data import random_split
+
 
 def main():
-    # Load CIFAR-10
-    data_loader = CIFAR10Loader()
-    cifar_url = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
-    data_loader.download_and_extract(cifar_url)
+    # Load CIFAR-10 data using PyTorch's torchvision
+    transform = transforms.Compose([
+        transforms.ToTensor(),  # Convert images to PyTorch tensors
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize to range [-1, 1]
+    ])
 
-    # Load and preprocess data
-    X_train, y_train, X_test, y_test = data_loader.load_data()
-    X_train, y_train = data_loader.preprocess(X_train, y_train)
-    X_test, y_test = data_loader.preprocess(X_test, y_test)
+    # Download and load training data
+    cifar10_train = datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
 
-    # Split training data into training and validation sets
-    num_val = int(0.1 * len(X_train))
-    X_val, y_val = X_train[:num_val], y_train[:num_val]
-    X_train, y_train = X_train[num_val:], y_train[num_val:]
+    # Split data into training and validation sets (90% train, 10% validation)
+    train_size = int(0.9 * len(cifar10_train))
+    val_size = len(cifar10_train) - train_size
+    train_data, val_data = random_split(cifar10_train, [train_size, val_size])
+
+    # Load test data
+    cifar10_test = datasets.CIFAR10(root="./data", train=False, download=True, transform=transform)
+
+    # Convert training, validation, and test data to DataLoader
+    train_loader = torch.utils.data.DataLoader(train_data, batch_size=len(train_data), shuffle=False)
+    val_loader = torch.utils.data.DataLoader(val_data, batch_size=len(val_data), shuffle=False)
+    test_loader = torch.utils.data.DataLoader(cifar10_test, batch_size=len(cifar10_test), shuffle=False)
+
+    # Get all data and labels as NumPy arrays
+    X_train, y_train = next(iter(train_loader))
+    X_val, y_val = next(iter(val_loader))
+    X_test, y_test = next(iter(test_loader))
+
+    # Convert data from PyTorch tensors to NumPy arrays
+    X_train = X_train.numpy()
+    y_train = y_train.numpy()
+    X_val = X_val.numpy()
+    y_val = y_val.numpy()
+    X_test = X_test.numpy()
+    y_test = y_test.numpy()
+
+    # Flatten image data for MLP input
+    X_train = X_train.reshape(X_train.shape[0], -1)
+    X_val = X_val.reshape(X_val.shape[0], -1)
 
     # Initialize model
     input_size = 32 * 32 * 3
@@ -33,11 +61,7 @@ def main():
     # Initialize trainer
     trainer = Trainer(model, learning_rate=hp.LEARNING_RATE, lr_decay=hp.LR_DECAY, reg_strength=hp.REG_STRENGTH)
 
-    # Prepare data by flattening image inputs
-    X_train = X_train.reshape(X_train.shape[0], -1)  # Flatten image data for MLP input
-    X_val = X_val.reshape(X_val.shape[0], -1)
-
-    # Train the model, mini-batch SGD
+    # Train the model using mini-batch SGD
     trainer.train(X_train, y_train, X_val, y_val, epochs=hp.EPOCHS, batch_size=hp.BATCH_SIZE, print_every=hp.PRINT_EVERY)
 
     print("Training completed. Model weights and biases have been saved.")

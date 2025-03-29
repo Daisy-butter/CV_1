@@ -3,9 +3,9 @@
 class Hyperparameters:
     LEARNING_RATE = 0.01
     LR_DECAY = 0.95
-    HIDDEN_SIZES = [128, 64]
+    HIDDEN_SIZES = [256,128]
     REG_STRENGTH = 1e-4
-    EPOCHS = 50
+    EPOCHS = 150
     BATCH_SIZE = 128
     PRINT_EVERY = 5
     MODEL_SAVE_DIR = 'best_model'
