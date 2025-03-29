@@ -56,47 +56,38 @@ class MLP:
         return exps / np.sum(exps, axis=1, keepdims=True)
 
     def forward(self, x):
-        self.inputs = [] # Store inputs for backpropagation
-        self.activations = [] # Store activations for backpropagation
+        self.inputs = []  # Store pre-activation (z values)
+        self.activations = [x]  # Store post-activation values (start with input layer)
 
         current_activation = x
-        self.inputs.append(current_activation) # Store the input layer
-
-        # Forward through layers
         for w, b in zip(self.weights[:-1], self.biases[:-1]):
             z = np.dot(current_activation, w) + b
-            current_activation = self._activate(z)
             self.inputs.append(z)
+            current_activation = self._activate(z)  # Apply activation
             self.activations.append(current_activation)
 
-        # Output layer(no activation function, directly output logits)
+        # Output layer (no activation, just linear transformation)
         z = np.dot(current_activation, self.weights[-1]) + self.biases[-1]
         self.inputs.append(z)
-        self.activations.append(z) #final logits
-        return z
+        return z  # Return logits for classification
 
 
     def backward(self, logits, y):
+        # Calculate gradients for weights and biases
         batch_size = y.shape[0]
         dz = self.softmax(logits)
         dz[range(batch_size), y] -= 1
         dz /= batch_size
 
-        d_weights = []
-        d_biases = []
-
-        # Backward through layers(from last layer to first layer)
+        gradients = []
         for i in reversed(range(self.layers)):
-            dw = np.dot(self.activations[i-1].T, dz)
+            dw = np.dot(self.activations[i].T, dz)
             db = np.sum(dz, axis=0, keepdims=True)
 
-            d_weights.append(dw)
-            d_biases.append(db)
+            d_weights.insert(0, dw)  # Insert grad weights at the beginning
+            d_biases.insert(0, db)
 
             if i > 0:
-                dz = np.dot(dz, self.weights[i].T) * self._activate_derivative(self.inputs[i]) #i / i-1?
-
-            d_weights.reverse()
-            d_biases.reverse()
+                dz = np.dot(dz, self.weights[i].T) * self._activate_derivative(self.inputs[i])
 
         return d_weights, d_biases

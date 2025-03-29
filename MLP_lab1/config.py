@@ -9,6 +9,3 @@ class Hyperparameters:
     BATCH_SIZE = 128
     PRINT_EVERY = 5
     MODEL_SAVE_DIR = 'best_model'
-
-def update_learning_rate(self):
-        self.learning_rate *= self.lr_decay
