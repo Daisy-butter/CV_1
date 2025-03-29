@@ -110,15 +110,15 @@ class Trainer:
             gradient_weights, gradient_biases = self.model.backward(logits, y_batch)
     
             # Update weights and biases
-            self.update_weights(gradient_weights, gradient_biases)  # 封装更新逻辑
+            # self.update_weights(gradient_weights, gradient_biases)  # 封装更新逻辑
 
         # 每个epoch后，验证集评估
         val_logits = self.model.forward(X_val)
         val_loss = self.compute_loss(val_logits, y_val)
         # val_accuracy = self.compute_accuracy(val_logits, y_val)
 
-        # 学习率衰减
-        hp.update_learning_rate()
+        # 学习率衰减 需要修改
+        self.learning_rate = hp.LEARNING_RATE * (hp.LR_DECAY ** epoch)
 
         # 保存当前模型
         self.save_model(epoch, save_dir="saved_models")
@@ -134,19 +134,42 @@ class Trainer:
 
        
     def save_model(self, epoch, save_dir="saved_models", is_best=False):
+    # 如果保存的是最佳模型，则使用强制的 `best_model` 目录
         if is_best:
-            save_dir = "best_model"  # 如果是最佳模型，则强制保存到 `best_model`
-    
+            save_dir = "best_model"
+
+        # 如果目标保存路径不存在，则创建
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
-        np.save(os.path.join(save_dir, f'weights_epoch_{epoch}.npy'), self.model.weights)
-        np.save(os.path.join(save_dir, f'biases_epoch_{epoch}.npy'), self.model.biases)
-        print(f"Model for epoch {epoch} saved to {save_dir}")
+        # 保存每层权重和偏置
+        for layer_idx, (weight, bias) in enumerate(zip(self.model.weights, self.model.biases)):
+            np.save(os.path.join(save_dir, f'weights_layer_{layer_idx}_epoch_{epoch}.npy'), weight)
+            np.save(os.path.join(save_dir, f'biases_layer_{layer_idx}_epoch_{epoch}.npy'), bias)
+
+        print(f"Model for epoch {epoch} saved successfully to {save_dir}")
+
    
-    def load_model(self, load_dir=hp.MODEL_SAVE_DIR):
-        # Load model weights and biases
-        self.model.weights = np.load(os.path.join(load_dir, 'weights.npy'), allow_pickle=True)
-        self.model.biases = np.load(os.path.join(load_dir, 'biases.npy'), allow_pickle=True)
-        print(f"Model loaded from {load_dir}")
+    def load_model(self, load_dir="saved_models"):
+        # 创建空列表，用于存放权重和偏置
+        weights = []
+        biases = []
+
+        # 假设 self.model.weights 已初始化，使用其长度推测层数
+        num_layers = len(self.model.weights)  # 或硬编码具体层数，如 `num_layers = 3`
+
+        # 逐层加载权重和偏置
+        for layer_idx in range(num_layers):
+            weight_path = os.path.join(load_dir, f'weights_layer_{layer_idx}.npy')
+            bias_path = os.path.join(load_dir, f'biases_layer_{layer_idx}.npy')
+
+            # 加载保存的权重和偏置
+            weights.append(np.load(weight_path, allow_pickle=True))
+            biases.append(np.load(bias_path, allow_pickle=True))
+
+        # 分配加载的数据到模型
+        self.model.weights = weights
+        self.model.biases = biases
+
+        print(f"Model loaded successfully from {load_dir}")
 

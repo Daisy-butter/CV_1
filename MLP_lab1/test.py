@@ -1,10 +1,9 @@
-# 测试部分需支持导入训练好的模型， 输出在测试集上的分类准确率(Accuracy)
-
 import numpy as np
 import os
 from MLP_model import MLP
 from train import CIFAR10Loader
 from config import Hyperparameters as hp
+
 
 class Tester:
     def __init__(self, model):
@@ -49,14 +48,28 @@ def main():
     activation = 'leaky_relu'
     model = MLP(input_size, hidden_sizes, output_size, activation)  # Example activation function
 
-    # Load trained model weights and biases
-    load_dir = hp.MODEL_SAVE_DIR  # Directory containing the trained model
+    ### Load trained model weights and biases from `best_model` ###
+    load_dir = "best_model"  # Directory containing the best trained model
     try:
-        model.weights = np.load(os.path.join(load_dir, 'weights.npy'), allow_pickle=True)
-        model.biases = np.load(os.path.join(load_dir, 'biases.npy'), allow_pickle=True)
-        print(f"Model loaded successfully from {load_dir}")
+        # Initialize empty lists for weights and biases
+        weights = []
+        biases = []
+
+        # Load each layer's weights and biases
+        num_layers = len(hidden_sizes) + 1  # Hidden layers + output layer
+        for layer_idx in range(num_layers):
+            weight_path = os.path.join(load_dir, f'weights_layer_{layer_idx}_epoch_best.npy')
+            bias_path = os.path.join(load_dir, f'biases_layer_{layer_idx}_epoch_best.npy')
+
+            weights.append(np.load(weight_path, allow_pickle=True))
+            biases.append(np.load(bias_path, allow_pickle=True))
+
+        # Assign loaded weights and biases to the model
+        model.weights = weights
+        model.biases = biases
+        print(f"Best model loaded successfully from {load_dir}")
     except FileNotFoundError:
-        print(f"Error: Model files not found in {load_dir}. Please train the model first!")
+        print(f"Error: Best model files not found in {load_dir}. Please train the model and save it first!")
         return
 
     # Initialize tester
