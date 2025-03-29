@@ -1,57 +1,60 @@
 import numpy as np
 import os
 import pickle
-import urllib.request
-import tarfile
 from MLP_model import MLP
 from train import CIFAR10Loader, Trainer
 from config import Hyperparameters as hp
-import torch
-from torchvision import datasets, transforms
-from torch.utils.data import random_split
+
+
+def load_cifar10_local(data_path):
+    """Load CIFAR-10 dataset from a local path and return train, validation, and test datasets."""
+    def unpickle(file):
+        with open(file, 'rb') as fo:
+            data_dict = pickle.load(fo, encoding='bytes')
+        return data_dict
+
+    # Load training data batches
+    X_train = []
+    y_train = []
+    for batch in range(1, 6):  # CIFAR-10 training batches are 'data_batch_1' to 'data_batch_5'
+        batch_file = os.path.join(data_path, f"data_batch_{batch}")
+        batch_data = unpickle(batch_file)
+        X_train.append(batch_data[b"data"])
+        y_train.append(batch_data[b"labels"])
+    X_train = np.vstack(X_train).astype(np.float32)
+    y_train = np.hstack(y_train).astype(np.int64)
+
+    # Load test data
+    test_data = unpickle(os.path.join(data_path, "test_batch"))
+    X_test = test_data[b"data"].astype(np.float32)
+    y_test = np.array(test_data[b"labels"], dtype=np.int64)
+
+    # Normalize data to [-1, 1]
+    X_train /= 255.0
+    X_test /= 255.0
+    X_train = 2 * X_train - 1
+    X_test = 2 * X_test - 1
+
+    return X_train, y_train, X_test, y_test
 
 
 def main():
-    # Load CIFAR-10 data using PyTorch's torchvision
-    transform = transforms.Compose([
-        transforms.ToTensor(),  # Convert images to PyTorch tensors
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize to range [-1, 1]
-    ])
+    # Local CIFAR-10 path
+    data_path = r"C:\Users\31521\OneDrive\桌面\files\academic\FDU\25春大三下\计算机视觉\lab_data\cifar-10-batches-py"
 
-    # Download and load training data
-    cifar10_train = datasets.CIFAR10(root="./data", train=True, download=True, transform=transform)
+    # Load local CIFAR-10 data
+    X_train, y_train, X_test, y_test = load_cifar10_local(data_path)
 
-    # Split data into training and validation sets (90% train, 10% validation)
-    train_size = int(0.9 * len(cifar10_train))
-    val_size = len(cifar10_train) - train_size
-    train_data, val_data = random_split(cifar10_train, [train_size, val_size])
-
-    # Load test data
-    cifar10_test = datasets.CIFAR10(root="./data", train=False, download=True, transform=transform)
-
-    # Convert training, validation, and test data to DataLoader
-    train_loader = torch.utils.data.DataLoader(train_data, batch_size=len(train_data), shuffle=False)
-    val_loader = torch.utils.data.DataLoader(val_data, batch_size=len(val_data), shuffle=False)
-    test_loader = torch.utils.data.DataLoader(cifar10_test, batch_size=len(cifar10_test), shuffle=False)
-
-    # Get all data and labels as NumPy arrays
-    X_train, y_train = next(iter(train_loader))
-    X_val, y_val = next(iter(val_loader))
-    X_test, y_test = next(iter(test_loader))
-
-    # Convert data from PyTorch tensors to NumPy arrays
-    X_train = X_train.numpy()
-    y_train = y_train.numpy()
-    X_val = X_val.numpy()
-    y_val = y_val.numpy()
-    X_test = X_test.numpy()
-    y_test = y_test.numpy()
+    # Split training data into training and validation sets (90% train, 10% validation)
+    num_val = int(0.1 * len(X_train))
+    X_val, y_val = X_train[:num_val], y_train[:num_val]
+    X_train, y_train = X_train[num_val:], y_train[num_val:]
 
     # Flatten image data for MLP input
     X_train = X_train.reshape(X_train.shape[0], -1)
     X_val = X_val.reshape(X_val.shape[0], -1)
 
-    # Initialize model
+    # Initialize the model
     input_size = 32 * 32 * 3
     hidden_sizes = hp.HIDDEN_SIZES
     output_size = 10  # CIFAR-10 has 10 classes
@@ -65,6 +68,7 @@ def main():
     trainer.train(X_train, y_train, X_val, y_val, epochs=hp.EPOCHS, batch_size=hp.BATCH_SIZE, print_every=hp.PRINT_EVERY)
 
     print("Training completed. Model weights and biases have been saved.")
+
 
 if __name__ == "__main__":
     main()

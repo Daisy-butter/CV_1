@@ -1,10 +1,27 @@
 import numpy as np
 import os
+import pickle
 from MLP_model import MLP
-from train import CIFAR10Loader
 from config import Hyperparameters as hp
-import torch
-from torchvision import datasets, transforms
+
+
+def load_cifar10_local(data_path):
+    """Load CIFAR-10 dataset from a local path and return test dataset."""
+    def unpickle(file):
+        with open(file, 'rb') as fo:
+            data_dict = pickle.load(fo, encoding='bytes')
+        return data_dict
+
+    # Load test data
+    test_data = unpickle(os.path.join(data_path, "test_batch"))
+    X_test = test_data[b"data"].astype(np.float32)
+    y_test = np.array(test_data[b"labels"], dtype=np.int64)
+
+    # Normalize test data to [-1, 1]
+    X_test /= 255.0
+    X_test = 2 * X_test - 1
+
+    return X_test, y_test
 
 
 class Tester:
@@ -31,23 +48,11 @@ class Tester:
 
 
 def main():
-    import torch
-    from torchvision import datasets, transforms
+    # Local CIFAR-10 path
+    data_path = r"C:\Users\31521\OneDrive\桌面\files\academic\FDU\25春大三下\计算机视觉\lab_data\cifar-10-batches-py"
 
-    # Load CIFAR-10 using PyTorch's torchvision
-    transform = transforms.Compose([
-        transforms.ToTensor(),  # Convert image to tensor
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize to range [-1, 1]
-    ])
-    
-    # Download and preprocess CIFAR-10 test data
-    test_data = datasets.CIFAR10(root="./data", train=False, download=True, transform=transform)
-    test_loader = torch.utils.data.DataLoader(test_data, batch_size=len(test_data), shuffle=False)
-    
-    # Load test data into numpy arrays
-    X_test, y_test = next(iter(test_loader))
-    X_test = X_test.numpy()
-    y_test = y_test.numpy()
+    # Load local CIFAR-10 test data
+    X_test, y_test = load_cifar10_local(data_path)
 
     # Flatten test data
     X_test = X_test.reshape(X_test.shape[0], -1)
