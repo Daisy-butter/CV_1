@@ -1,0 +1,4 @@
+# 忽略数据集文件
+MLP_lab1/cifar-10-python.tar.gz
+data/  # 可以忽略整个数据目录，如果你计划将数据放到这个目录下
+MLP_lab1/cifar-10-python.tar.gz
