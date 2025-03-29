@@ -11,14 +11,15 @@ class MLP:
         
         # Initialize the model with given sizes and activation function
         self.input_size = input_size
-        self.hidden_sizes = hp.HIDDEN_SIZES
+        self.hidden_sizes = hidden_sizes
         self.output_size = output_size
         self.activation = activation
         
-        self.layers = len(hp.HIDDEN_SIZES) + 1
+        self.layers = len(hidden_sizes) + 1
         self.weights = []
         self.biases = []
-        sizes = [input_size] + hp.HIDDEN_SIZES + [output_size]
+        
+        sizes = [input_size] + hidden_sizes + [output_size]
 
         for i in range(len(sizes) - 1):
             # Initialize weights with small random values
@@ -48,43 +49,54 @@ class MLP:
             return sig * (1 - sig)
         else:
             raise ValueError(f'Unknown activation function: {self.activation}')
+        
+    def softmax(self, x):
+        # Apply softmax function
+        exps = np.exp(x - np.max(x, axis=1, keepdims=True))  # Stability improvement
+        return exps / np.sum(exps, axis=1, keepdims=True)
 
     def forward(self, x):
-        self.inputs = []  # Store intermediate inputs
-        self.outputs = []  # Store intermediate outputs
-    # Forward through layers
-        current_activation = x
-        self.inputs.append(current_activation)
+        self.inputs = [] # Store inputs for backpropagation
+        self.activations = [] # Store activations for backpropagation
 
+        current_activation = x
+        self.inputs.append(current_activation) # Store the input layer
+
+        # Forward through layers
         for w, b in zip(self.weights[:-1], self.biases[:-1]):
             z = np.dot(current_activation, w) + b
             current_activation = self._activate(z)
-            self.inputs.append(z)  # Store intermediate results
-            self.outputs.append(current_activation)
-    # Final output layer (logits, no softmax here, will be applied with cross entropy loss in train.py)
+            self.inputs.append(z)
+            self.activations.append(current_activation)
+
+        # Output layer(no activation function, directly output logits)
         z = np.dot(current_activation, self.weights[-1]) + self.biases[-1]
-        self.inputs.append(z)  # Store logits
-        self.outputs.append(z)  # Append logits
-    # Return logits instead of applying softmax here
+        self.inputs.append(z)
+        self.activations.append(z) #final logits
         return z
 
-    def backward(self, x, y):
-        batch_size = y.shape[0]  # batch_size 是 y 的行数
-        final_output = self.outputs[-1]  # 获取最后一层的输出
-        dz = final_output - y  # Loss derivative for the last layer
+
+    def backward(self, logits, y):
+        batch_size = y.shape[0]
+        dz = self.softmax(logits)
+        dz[range(batch_size), y] -= 1
+        dz /= batch_size
 
         d_weights = []
         d_biases = []
-    # Backward through layers to calculate gradients
-        for i in reversed(range(self.layers)):
-            dw = np.dot(self.inputs[i].T, dz) / batch_size  # Gradient for weights
-            db = np.sum(dz, axis=0, keepdims=True) / batch_size  # Gradient for biases
 
-            d_weights.append(dw)  # Append to the end of the list
+        # Backward through layers(from last layer to first layer)
+        for i in reversed(range(self.layers)):
+            dw = np.dot(self.activations[i-1].T, dz)
+            db = np.sum(dz, axis=0, keepdims=True)
+
+            d_weights.append(dw)
             d_biases.append(db)
 
-            if i > 0:  # Compute dz for the previous layer
-                dz = np.dot(dz, self.weights[i].T) * self._activate_derivative(self.inputs[i])
+            if i > 0:
+                dz = np.dot(dz, self.weights[i].T) * self._activate_derivative(self.inputs[i]) #i / i-1?
 
-        # Reverse the lists before returning to keep the order correct
-        return list(reversed(d_weights)), list(reversed(d_biases))
+            d_weights.reverse()
+            d_biases.reverse()
+
+        return d_weights, d_biases
