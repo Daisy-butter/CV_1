@@ -25,7 +25,7 @@ def main():
 
     # Initialize model
     input_size = 32 * 32 * 3
-    hidden_sizes = hp.HIDDEN_SIZES  # Example hidden layer sizes
+    hidden_sizes = hp.HIDDEN_SIZES
     output_size = 10  # CIFAR-10 has 10 classes
     activation = 'leaky_relu'
     model = MLP(input_size, hidden_sizes, output_size, activation)
