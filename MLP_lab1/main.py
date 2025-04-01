@@ -29,11 +29,9 @@ def load_cifar10_local(data_path):
     X_test = test_data[b"data"].astype(np.float32)
     y_test = np.array(test_data[b"labels"], dtype=np.int64)
 
-    # Normalize data to [-1, 1]
+    # Normalize data to [0, 1]
     X_train /= 255.0
     X_test /= 255.0
-    X_train = 2 * X_train - 1
-    X_test = 2 * X_test - 1
 
     return X_train, y_train, X_test, y_test
 

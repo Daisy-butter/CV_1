@@ -22,8 +22,8 @@ class MLP:
         sizes = [input_size] + hidden_sizes + [output_size]
 
         for i in range(len(sizes) - 1):
-            # Initialize weights with small random values
-            self.weights.append(np.random.randn(sizes[i], sizes[i + 1]) * 0.01)
+            # Initialize weights with small random values. For leaky-relu, use He initialization
+            self.weights.append(np.random.randn(sizes[i], sizes[i + 1]) * np.sqrt(2 / sizes[i]))
             # Initialize biases with zeros
             self.biases.append(np.zeros((1, sizes[i + 1])))
     
@@ -73,13 +73,15 @@ class MLP:
 
 
     def backward(self, logits, y):
-        # Calculate gradients for weights and biases
         batch_size = y.shape[0]
-        dz = self.softmax(logits)
+        dz = self.softmax(logits)  # Apply softmax and compute gradient
         dz[range(batch_size), y] -= 1
         dz /= batch_size
 
-        gradients = []
+        d_weights = []
+        d_biases = []
+
+        # Backward pass through layers
         for i in reversed(range(self.layers)):
             dw = np.dot(self.activations[i].T, dz)
             db = np.sum(dz, axis=0, keepdims=True)
@@ -87,7 +89,7 @@ class MLP:
             d_weights.insert(0, dw)  # Insert grad weights at the beginning
             d_biases.insert(0, db)
 
-            if i > 0:
-                dz = np.dot(dz, self.weights[i].T) * self._activate_derivative(self.inputs[i])
+            if i > 0:  # For non-output layers, backpropagate gradients
+                dz = np.dot(dz, self.weights[i].T) * self._activate_derivative(self.inputs[i - 1])
 
         return d_weights, d_biases

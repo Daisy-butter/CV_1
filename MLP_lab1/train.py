@@ -65,7 +65,7 @@ class Trainer:
     def cross_entropy_loss(self, logits, y):
         # Calculate cross-entropy loss
         batch_size = y.shape[0]
-        probs = self.model.softmax(logits)  # Apply softmax to logits
+        probs = self.model.softmax(logits) +1e-15  # Apply softmax to logits, add a small constant to avoid log(0)
         log_probs = np.log(probs[range(batch_size), y])
         data_loss = -np.sum(log_probs) / batch_size
         return data_loss
@@ -86,8 +86,10 @@ class Trainer:
 
     def update_weights(self, gradient_weights, gradient_biases):
         for j in range(len(self.model.weights)):  # 遍历每一层的权重
-            self.model.weights[j] -= self.learning_rate * (gradient_weights[j] + self.reg_strength * self.model.weights[j])  # L2 正则化
-            self.model.biases[j] -= self.learning_rate * gradient_biases[j]
+            self.model.weights[j] -= self.learning_rate * gradient_weights[j]  # 只对权重项进行 L2
+            self.model.weights[j] -= self.reg_strength * self.model.weights[j]  # 独立的正则化项，仅对权重作用
+            self.model.biases[j] -= self.learning_rate * gradient_biases[j]  # 偏置更新不加正则化
+
 
     def train(self, X_train, y_train, X_val, y_val, epochs=hp.EPOCHS, batch_size=hp.BATCH_SIZE, print_every=hp.PRINT_EVERY):
         num_train = X_train.shape[0]
