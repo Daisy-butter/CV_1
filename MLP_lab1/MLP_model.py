@@ -71,7 +71,6 @@ class MLP:
         self.inputs.append(z)
         return z  # Return logits for classification
 
-
     def backward(self, logits, y):
         batch_size = y.shape[0]
         dz = self.softmax(logits)  # Apply softmax and compute gradient
