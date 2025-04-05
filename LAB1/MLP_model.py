@@ -16,21 +16,15 @@ def retrieve_model_parameters(filename):
 def relu_activation(x):
     return np.maximum(x, 0)
 
-def softmax_activation(x):
-    e_x = np.exp(x - np.max(x, axis=1, keepdims=True))
-    return e_x / np.sum(e_x, axis=1, keepdims=True)
-
 def leaky_relu_activation(x, alpha=0.01):
     return np.where(x > 0, x, alpha * x)
 
-def sigmoid_activation(x):
-    return 1 / (1 + np.exp(-x))
-
-def derivative_sigmoid(x):
-    return x * (1 - x)
-
 def derivative_leaky_relu(x, alpha=0.01):
     return np.where(x > 0, 1, alpha)
+
+def softmax_activation(x):
+    e_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+    return e_x / np.sum(e_x, axis=1, keepdims=True)
 
 # Loss computation
 def calculate_loss(true_y, predicted_y, model, regularization_factor):
@@ -38,68 +32,123 @@ def calculate_loss(true_y, predicted_y, model, regularization_factor):
     log_loss = -np.mean(np.sum(true_y * np.log(predicted_y + 1e-12), axis=1))
     return log_loss + reg_loss
 
+def calculate_accuracy(predictions, labels):
+    return np.mean(np.argmax(predictions, axis=1) == np.argmax(labels, axis=1))
+
+# Batch Normalization forward pass
+def batch_normalization_forward(x, gamma, beta, epsilon=1e-5):
+    """
+    Performs batch normalization on layer inputs.
+    :param x: Input matrix (batch_size, num_features)
+    :param gamma: Scaling parameter
+    :param beta: Shifting parameter
+    :returns: normalized input, cache (for backward propagation)
+    """
+    batch_mean = np.mean(x, axis=0)
+    batch_var = np.var(x, axis=0)
+    x_normalized = (x - batch_mean) / np.sqrt(batch_var + epsilon)
+    out = gamma * x_normalized + beta
+    cache = (x, x_normalized, batch_mean, batch_var, gamma, beta, epsilon)
+    return out, cache
+
+# Batch Normalization backward pass
+def batch_normalization_backward(dout, cache):
+    """
+    Backward pass for batch normalization.
+    :param dout: Upstream gradients
+    :param cache: Cached values from forward pass
+    :returns: Gradients with respect to inputs, gamma, beta
+    """
+    x, x_normalized, batch_mean, batch_var, gamma, beta, epsilon = cache
+    m = x.shape[0]
+
+    dgamma = np.sum(dout * x_normalized, axis=0)
+    dbeta = np.sum(dout, axis=0)
+
+    dx_normalized = dout * gamma
+    dvar = np.sum(dx_normalized * (x - batch_mean) * -0.5 * (batch_var + epsilon)**(-1.5), axis=0)
+    dmean = np.sum(dx_normalized * -1 / np.sqrt(batch_var + epsilon), axis=0) + dvar * np.sum(-2 * (x - batch_mean), axis=0) / m
+    dx = dx_normalized / np.sqrt(batch_var + epsilon) + dvar * 2 * (x - batch_mean) / m + dmean / m
+
+    return dx, dgamma, dbeta
+
+# Setup the model with Batch Normalization parameters
 def setup_model(input_size, hidden_size, output_size):
     model = {
         'W1': np.random.randn(input_size, hidden_size) * 0.01,
         'b1': np.zeros(hidden_size),
+        'gamma1': np.ones(hidden_size),
+        'beta1': np.zeros(hidden_size),
         'W2': np.random.randn(hidden_size, hidden_size) * 0.01,
         'b2': np.zeros(hidden_size),
+        'gamma2': np.ones(hidden_size),
+        'beta2': np.zeros(hidden_size),
         'W3': np.random.randn(hidden_size, output_size) * 0.01,
         'b3': np.zeros(output_size)
     }
     return model
 
-# Forward and backward propagation
-def model_forward(model, X, activation='leaky_relu'):
+# Forward propagation with Batch Normalization
+def model_forward_with_bn(model, X, activation='leaky_relu'):
     activations = {}
-    W1, b1, W2, b2, W3, b3 = model.values()
+    caches = {}
 
-    activations['z1'] = X @ W1 + b1
-    activations['a1'] = leaky_relu_activation(activations['z1']) if activation == 'leaky_relu' else sigmoid_activation(activations['z1'])
+    # Retrieve parameters
+    W1, b1, gamma1, beta1 = model['W1'], model['b1'], model['gamma1'], model['beta1']
+    W2, b2, gamma2, beta2 = model['W2'], model['b2'], model['gamma2'], model['beta2']
+    W3, b3 = model['W3'], model['b3']
 
-    activations['z2'] = activations['a1'] @ W2 + b2
-    activations['a2'] = leaky_relu_activation(activations['z2']) if activation == 'leaky_relu' else sigmoid_activation(activations['z2'])
+    # Layer 1
+    z1 = X @ W1 + b1
+    a1_bn, bn_cache1 = batch_normalization_forward(z1, gamma1, beta1)
+    a1 = leaky_relu_activation(a1_bn) if activation == 'leaky_relu' else relu_activation(a1_bn)
+    activations['a1'], caches['bn1'] = a1, bn_cache1
 
-    activations['z3'] = activations['a2'] @ W3 + b3
-    activations['a3'] = softmax_activation(activations['z3'])
+    # Layer 2
+    z2 = a1 @ W2 + b2
+    a2_bn, bn_cache2 = batch_normalization_forward(z2, gamma2, beta2)
+    a2 = leaky_relu_activation(a2_bn) if activation == 'leaky_relu' else relu_activation(a2_bn)
+    activations['a2'], caches['bn2'] = a2, bn_cache2
 
-    return activations['a3'], activations
+    # Layer 3 (output layer)
+    z3 = a2 @ W3 + b3
+    a3 = softmax_activation(z3)
+    activations['a3'] = a3
 
-def model_backward(model, activations, X, y, y_hat, reg_strength, activation='leaky_relu'):
+    return a3, activations, caches
+
+# Backward propagation with Batch Normalization
+def model_backward_with_bn(model, activations, caches, X, y, y_hat, reg_strength, activation='leaky_relu'):
     gradients = {}
     W1, W2, W3 = model['W1'], model['W2'], model['W3']
-    a1, a2 = activations['a1'], activations['a2']
+    gamma1, gamma2 = model['gamma1'], model['gamma2']
 
+    # Backpropagation for Layer 3
     error = y_hat - y
-    gradients['dW3'] = a2.T @ error + reg_strength * W3
+    gradients['dW3'] = activations['a2'].T @ error + reg_strength * W3
     gradients['db3'] = np.sum(error, axis=0)
 
+    # Backpropagation for Layer 2
+    da2 = error @ W3.T
     if activation == 'leaky_relu':
-        error = (error @ W3.T) * derivative_leaky_relu(a2)
-    else:  # fallback to sigmoid if needed
-        error = (error @ W3.T) * derivative_sigmoid(a2)
+        da2 *= derivative_leaky_relu(activations['a2'])
+    dz2, dgamma2, dbeta2 = batch_normalization_backward(da2, caches['bn2'])
+    gradients['dW2'] = activations['a1'].T @ dz2 + reg_strength * W2
+    gradients['db2'] = np.sum(dz2, axis=0)
+    gradients['dgamma2'], gradients['dbeta2'] = dgamma2, dbeta2
 
-    gradients['dW2'] = a1.T @ error + reg_strength * W2
-    gradients['db2'] = np.sum(error, axis=0)
-
+    # Backpropagation for Layer 1
+    da1 = dz2 @ W2.T
     if activation == 'leaky_relu':
-        error = (error @ W2.T) * derivative_leaky_relu(a1)
-    else:  # fallback to sigmoid if needed
-        error = (error @ W2.T) * derivative_sigmoid(a1)
-
-    gradients['dW1'] = X.T @ error + reg_strength * W1
-    gradients['db1'] = np.sum(error, axis=0)
+        da1 *= derivative_leaky_relu(activations['a1'])
+    dz1, dgamma1, dbeta1 = batch_normalization_backward(da1, caches['bn1'])
+    gradients['dW1'] = X.T @ dz1 + reg_strength * W1
+    gradients['db1'] = np.sum(dz1, axis=0)
+    gradients['dgamma1'], gradients['dbeta1'] = dgamma1, dbeta1
 
     return gradients
 
 def update_parameters(model, gradients, learn_rate):
     for key in model:
-        model[key] -= learn_rate * gradients['d' + key]
+        model[key] -= learn_rate * gradients.get(f'd{key}', 0)
     return model
-
-def calculate_accuracy(predictions, labels):
-    return np.mean(np.argmax(predictions, axis=1) == np.argmax(labels, axis=1))
-
-def encode_one_hot(labels, num_classes):
-    one_hot_labels = np.eye(num_classes)[labels.flatten()]
-    return one_hot_labels
