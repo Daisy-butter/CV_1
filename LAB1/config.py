@@ -4,7 +4,7 @@ class config:
     output_dim = 10
     LEARNING_RATE = 0.001
     decay_rate = 0.95
-    beta = 0.001
+    beta = 0.01
     batch_size = 128
     EPOCHS = 1000
     activation = 'leaky_relu'

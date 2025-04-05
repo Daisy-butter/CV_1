@@ -1,12 +1,8 @@
 from MLP_model import (
     setup_model,
-    model_forward_with_bn,
-    model_backward_with_bn,
-    update_parameters,
-    calculate_loss,
-    calculate_accuracy,
     store_model_parameters
 )
+from train import optimize_model_parameters  # 从 train.py 导入训练函数
 from config import config
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
@@ -30,75 +26,26 @@ beta = config.beta
 batch_size = config.batch_size
 EPOCHS = config.EPOCHS
 activation = config.activation
-dropout_rate = 0.5
+dropout_rate = 0.7
 
+# 初始化模型
 model = setup_model(INPUT_DIM, hidden_dim, output_dim)
 
-# 训练
-history_train_losses = []
-history_train_accuracies = []
-history_val_losses = []
-history_val_accuracies = []
-best_model = None
-best_val_accuracy = 0
-
-for epoch in range(1, EPOCHS + 1):
-    # 动态调整学习率
-    learn_rate = LEARNING_RATE / (1 + decay_rate * epoch)
-
-    # 分批训练
-    num_batches = X_train.shape[0] // batch_size
-    train_loss = 0
-    train_correct = 0
-
-    for batch in range(num_batches):
-        batch_start = batch * batch_size
-        batch_end = batch_start + batch_size
-        X_batch = X_train[batch_start:batch_end]
-        y_batch = y_train[batch_start:batch_end]
-
-        # 前向传播
-        y_hat, activations, caches = model_forward_with_bn(
-            model, X_batch, activation, dropout_rate=dropout_rate, training=True
-        )
-
-        # 计算损失
-        batch_loss = calculate_loss(y_batch, y_hat, model, beta)
-        train_loss += batch_loss
-
-        # 反向传播
-        gradients = model_backward_with_bn(model, activations, caches, X_batch, y_batch, y_hat, beta, activation)
-        model = update_parameters(model, gradients, learn_rate)
-
-        # 计算准确率
-        batch_predictions = np.argmax(y_hat, axis=1)
-        batch_labels = np.argmax(y_batch, axis=1)
-        train_correct += np.sum(batch_predictions == batch_labels)
-
-    # 记录训练指标
-    train_loss /= num_batches
-    train_accuracy = train_correct / len(y_train)
-    history_train_losses.append(train_loss)
-    history_train_accuracies.append(train_accuracy * 100)
-
-    # 验证
-    y_hat_val, _, _ = model_forward_with_bn(
-        model, X_test, activation, dropout_rate=dropout_rate, training=False
-    )
-    val_loss = calculate_loss(y_test, y_hat_val, model, beta)
-    val_accuracy = calculate_accuracy(y_hat_val, y_test) * 100
-
-    history_val_losses.append(val_loss)
-    history_val_accuracies.append(val_accuracy)
-
-    # 打印当前 epoch 信息
-    print(f"Epoch {epoch}/{EPOCHS}: Train Loss = {train_loss:.4f}, Train Accuracy = {train_accuracy * 100:.4f}%, "
-          f"Val Loss = {val_loss:.4f}, Val Accuracy = {val_accuracy:.4f}%")
-
-    # 保存最佳模型
-    if val_accuracy > best_val_accuracy:
-        best_model = model.copy()
-        best_val_accuracy = val_accuracy
+# 使用 train.py 中的优化函数进行模型训练
+model, best_model, history_train_losses, history_train_accuracies, history_val_losses, history_val_accuracies = optimize_model_parameters(
+    network=model,
+    training_data=X_train,
+    training_labels=y_train,
+    validation_data=X_test,
+    validation_labels=y_test,
+    lr_initial=LEARNING_RATE,
+    lr_decay=decay_rate,
+    regularisation_strength=beta,
+    dropout_rate=dropout_rate,
+    total_epochs=EPOCHS,
+    samples_per_batch=batch_size,
+    activation_fn=activation
+)
 
 # 保存最佳模型
 store_model_parameters(best_model, "best_model")
