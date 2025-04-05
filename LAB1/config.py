@@ -6,5 +6,5 @@ class config:
     decay_rate = 0.95
     beta = 0.001
     batch_size = 128
-    EPOCHS = 30
+    EPOCHS = 1000
     activation = 'leaky_relu'

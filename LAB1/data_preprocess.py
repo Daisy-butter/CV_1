@@ -44,104 +44,77 @@ def encode_one_hot(labels, num_classes):
     one_hot = encoder.fit_transform(labels)
     return one_hot
 
-def apply_cutout(image, mask_size):
+def regmixup_data(images, labels, alpha=0.2, reg_factor=0.1):
     """
-    Apply Cutout data augmentation: random masking.
-    :param image: Numpy array of shape (32, 32, 3).
-    :param mask_size: Size of the square mask.
-    :return: Image with a random masked region.
-    """
-    h, w = image.shape[:2]
-    mask_size_half = mask_size // 2
-    center_x = np.random.randint(0, w)
-    center_y = np.random.randint(0, h)
-
-    x1 = max(0, center_x - mask_size_half)
-    x2 = min(w, center_x + mask_size_half)
-    y1 = max(0, center_y - mask_size_half)
-    y2 = min(h, center_y + mask_size_half)
-
-    image[y1:y2, x1:x2, :] = 0  # Set the region to black.
-    return image
-
-def mixup_data(images, labels, alpha=0.2):
-    """
-    Apply Mixup data augmentation: linear interpolation of two image-label pairs.
+    Apply RegMixup data augmentation: combines Mixup with regularization.
     :param images: Numpy array of images.
     :param labels: Numpy array of one-hot encoded labels.
     :param alpha: Beta distribution parameter for Mixup.
-    :return: Mixed images and labels.
+    :param reg_factor: Regularization factor scaling the perturbation.
+    :return: Augmented images and labels.
     """
     batch_size = images.shape[0]
     lam = np.random.beta(alpha, alpha)
     
+    # Shuffle index for mixup
     indices = np.random.permutation(batch_size)
     mixed_images = lam * images + (1 - lam) * images[indices]
     mixed_labels = lam * labels + (1 - lam) * labels[indices]
     
+    # Apply small adversarial perturbation as regularization
+    perturbation = np.random.uniform(-reg_factor, reg_factor, size=mixed_images.shape)
+    mixed_images = np.clip(mixed_images + perturbation, 0, 1)  # Ensure values remain normalized
+    
     return mixed_images, mixed_labels
 
-def augment_data(images, labels=None, use_cutout=False, cutout_size=8, use_mixup=False):
-    """Data augmentation: horizontal flip, rotation, Cutout, and Mixup."""
+def augment_data(images, labels=None, use_regmixup=False, alpha=0.2, reg_factor=0.1):
+    """Data augmentation pipeline with RegMixup."""
     augmented_images = []
     for img in images:
-        pil_img = Image.fromarray((img * 255).astype(np.uint8))  # Turn into PIL image.
+        pil_img = Image.fromarray((img * 255).astype(np.uint8))  # Convert to PIL image
         
-        # Random horizontal flip.
+        # Random horizontal flip
         if np.random.rand() > 0.5:
             pil_img = pil_img.transpose(Image.FLIP_LEFT_RIGHT)
         
-        # Random rotation ±15 degrees.
+        # Random rotation ±15 degrees
         angle = np.random.uniform(-15, 15)
         pil_img = pil_img.rotate(angle)
 
-        # Random crop: Resize to 32x32 with random crop size between 0.9 and 1.0.
-        crop_size = np.random.uniform(0.9, 1.0)  # Decide the crop size.
-        crop_width, crop_height = int(32 * crop_size), int(32 * crop_size)
-        left = np.random.randint(0, 32 - crop_width)
-        top = np.random.randint(0, 32 - crop_height)
-        pil_img = pil_img.crop((left, top, left + crop_width, top + crop_height))
-        pil_img = pil_img.resize((32, 32))  # Adjust to 32x32.
-
-        # Turn back to numpy array, normalize to [0, 1].
+        # Turn back to numpy array, normalize to [0, 1]
         img = np.array(pil_img) / 255.0
-
-        # Apply Cutout if enabled.
-        if use_cutout:
-            img = apply_cutout(img, mask_size=cutout_size)
-
         augmented_images.append(img)
 
     augmented_images = np.array(augmented_images)
 
-    # Apply Mixup if enabled.
-    if use_mixup and labels is not None:
-        augmented_images, labels = mixup_data(augmented_images, labels)
+    # Apply RegMixup if enabled
+    if use_regmixup and labels is not None:
+        augmented_images, labels = regmixup_data(augmented_images, labels, alpha=alpha, reg_factor=reg_factor)
 
     return augmented_images, labels
 
-def preprocess_and_save(data_dir, save_dir, augment=False, use_cutout=False, cutout_size=8, use_mixup=False):
+def preprocess_and_save(data_dir, save_dir, augment=False, use_regmixup=False, alpha=0.2, reg_factor=0.1):
     """Load, augment, preprocess CIFAR-10 data and save locally."""
-    # Load CIFAR-10 data.
+    # Load CIFAR-10 data
     X_train, y_train = load_cifar10_train(data_dir)
     X_test, y_test = load_cifar10_test(data_dir)
 
-    # One-hot encode labels BEFORE data augmentation.
+    # One-hot encode labels BEFORE data augmentation
     print("Processing one-hot encoding...")
     y_train_one_hot = encode_one_hot(y_train, 10)
     y_test_one_hot = encode_one_hot(y_test, 10)
 
-    # Data augmentation.
+    # Data augmentation
     if augment:
         print("Processing data augmentation...")
-        X_train, y_train_one_hot = augment_data(X_train, labels=y_train_one_hot, use_cutout=use_cutout, cutout_size=cutout_size, use_mixup=use_mixup)
+        X_train, y_train_one_hot = augment_data(X_train, labels=y_train_one_hot, use_regmixup=use_regmixup, alpha=alpha, reg_factor=reg_factor)
 
-    # Flatten images.
+    # Flatten images
     print("Processing flattening images...")
     X_train = X_train.reshape(X_train.shape[0], -1)  # (50000, 3072)
     X_test = X_test.reshape(X_test.shape[0], -1)    # (10000, 3072)
 
-    # Save processed data to local directory.
+    # Save processed data to local directory
     print("Loading processed data to local directory...")
     np.save(os.path.join(save_dir, "X_train.npy"), X_train)
     np.save(os.path.join(save_dir, "y_train.npy"), y_train_one_hot)
@@ -149,15 +122,16 @@ def preprocess_and_save(data_dir, save_dir, augment=False, use_cutout=False, cut
     np.save(os.path.join(save_dir, "y_test.npy"), y_test_one_hot)
 
 if __name__ == "__main__":
-    # Raw data directory.
+    # Raw data directory
     data_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data/cifar-10-batches-py"
-    # Processed data directory.
+    # Processed data directory
     save_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data"
 
+    # Enable augmentation with RegMixup
     augment = True
-    use_cutout = True
-    cutout_size = 8
-    use_mixup = True
+    use_regmixup = True
+    alpha = 0.2  # Beta distribution parameter for RegMixup
+    reg_factor = 0.1  # Perturbation scale for regularization
 
-    preprocess_and_save(data_dir, save_dir, augment=augment, use_cutout=use_cutout, cutout_size=cutout_size, use_mixup=use_mixup)
+    preprocess_and_save(data_dir, save_dir, augment=augment, use_regmixup=use_regmixup, alpha=alpha, reg_factor=reg_factor)
     print("Data preprocessing done!")

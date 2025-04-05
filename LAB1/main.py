@@ -30,8 +30,8 @@ beta = config.beta
 batch_size = config.batch_size
 EPOCHS = config.EPOCHS
 activation = config.activation
+dropout_rate = 0.5
 
-# 初始化模型
 model = setup_model(INPUT_DIM, hidden_dim, output_dim)
 
 # 训练
@@ -58,7 +58,9 @@ for epoch in range(1, EPOCHS + 1):
         y_batch = y_train[batch_start:batch_end]
 
         # 前向传播
-        y_hat, activations, caches = model_forward_with_bn(model, X_batch, activation)
+        y_hat, activations, caches = model_forward_with_bn(
+            model, X_batch, activation, dropout_rate=dropout_rate, training=True
+        )
 
         # 计算损失
         batch_loss = calculate_loss(y_batch, y_hat, model, beta)
@@ -80,7 +82,9 @@ for epoch in range(1, EPOCHS + 1):
     history_train_accuracies.append(train_accuracy * 100)
 
     # 验证
-    y_hat_val, _, _ = model_forward_with_bn(model, X_test, activation)
+    y_hat_val, _, _ = model_forward_with_bn(
+        model, X_test, activation, dropout_rate=dropout_rate, training=False
+    )
     val_loss = calculate_loss(y_test, y_hat_val, model, beta)
     val_accuracy = calculate_accuracy(y_hat_val, y_test) * 100
 

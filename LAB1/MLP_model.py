@@ -37,13 +37,6 @@ def calculate_accuracy(predictions, labels):
 
 # Batch Normalization forward pass
 def batch_normalization_forward(x, gamma, beta, epsilon=1e-5):
-    """
-    Performs batch normalization on layer inputs.
-    :param x: Input matrix (batch_size, num_features)
-    :param gamma: Scaling parameter
-    :param beta: Shifting parameter
-    :returns: normalized input, cache (for backward propagation)
-    """
     batch_mean = np.mean(x, axis=0)
     batch_var = np.var(x, axis=0)
     x_normalized = (x - batch_mean) / np.sqrt(batch_var + epsilon)
@@ -53,12 +46,6 @@ def batch_normalization_forward(x, gamma, beta, epsilon=1e-5):
 
 # Batch Normalization backward pass
 def batch_normalization_backward(dout, cache):
-    """
-    Backward pass for batch normalization.
-    :param dout: Upstream gradients
-    :param cache: Cached values from forward pass
-    :returns: Gradients with respect to inputs, gamma, beta
-    """
     x, x_normalized, batch_mean, batch_var, gamma, beta, epsilon = cache
     m = x.shape[0]
 
@@ -72,7 +59,21 @@ def batch_normalization_backward(dout, cache):
 
     return dx, dgamma, dbeta
 
-# Setup the model with Batch Normalization parameters
+# Dropout implementation
+def dropout(x, rate, training=True):
+    """
+    Applies dropout to input x.
+    :param x: Input matrix (batch_size, num_features)
+    :param rate: Dropout rate (fraction of units to drop, e.g., 0.5)
+    :param training: If True, applies dropout; otherwise returns x unchanged.
+    :returns: Dropped-out input
+    """
+    if training:
+        mask = np.random.binomial(1, 1 - rate, size=x.shape) / (1 - rate)
+        return x * mask
+    return x
+
+# Setup the model with Batch Normalization and Dropout parameters
 def setup_model(input_size, hidden_size, output_size):
     model = {
         'W1': np.random.randn(input_size, hidden_size) * 0.01,
@@ -84,12 +85,12 @@ def setup_model(input_size, hidden_size, output_size):
         'gamma2': np.ones(hidden_size),
         'beta2': np.zeros(hidden_size),
         'W3': np.random.randn(hidden_size, output_size) * 0.01,
-        'b3': np.zeros(output_size)
+        'b3': np.zeros(output_size),
     }
     return model
 
-# Forward propagation with Batch Normalization
-def model_forward_with_bn(model, X, activation='leaky_relu'):
+# Forward propagation with Batch Normalization and Dropout
+def model_forward_with_bn(model, X, activation='leaky_relu', dropout_rate=0.5, training=True):
     activations = {}
     caches = {}
 
@@ -102,12 +103,14 @@ def model_forward_with_bn(model, X, activation='leaky_relu'):
     z1 = X @ W1 + b1
     a1_bn, bn_cache1 = batch_normalization_forward(z1, gamma1, beta1)
     a1 = leaky_relu_activation(a1_bn) if activation == 'leaky_relu' else relu_activation(a1_bn)
+    a1 = dropout(a1, dropout_rate, training)  # Apply dropout
     activations['a1'], caches['bn1'] = a1, bn_cache1
 
     # Layer 2
     z2 = a1 @ W2 + b2
     a2_bn, bn_cache2 = batch_normalization_forward(z2, gamma2, beta2)
     a2 = leaky_relu_activation(a2_bn) if activation == 'leaky_relu' else relu_activation(a2_bn)
+    a2 = dropout(a2, dropout_rate, training)  # Apply dropout
     activations['a2'], caches['bn2'] = a2, bn_cache2
 
     # Layer 3 (output layer)
@@ -117,7 +120,6 @@ def model_forward_with_bn(model, X, activation='leaky_relu'):
 
     return a3, activations, caches
 
-# Backward propagation with Batch Normalization
 def model_backward_with_bn(model, activations, caches, X, y, y_hat, reg_strength, activation='leaky_relu'):
     gradients = {}
     W1, W2, W3 = model['W1'], model['W2'], model['W3']
