@@ -26,7 +26,7 @@ beta = config.beta
 batch_size = config.batch_size
 EPOCHS = config.EPOCHS
 activation = config.activation
-dropout_rate = 0.7
+dropout_rate = 0.5
 
 # 初始化模型
 model = setup_model(INPUT_DIM, hidden_dim, output_dim)
