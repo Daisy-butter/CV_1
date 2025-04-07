@@ -107,15 +107,19 @@ def preprocess_and_save(data_dir, save_dir, augment=False, use_regmixup=False, a
     # Data augmentation
     if augment:
         print("Processing data augmentation...")
-        X_train, y_train_one_hot = augment_data(X_train, labels=y_train_one_hot, use_regmixup=use_regmixup, alpha=alpha, reg_factor=reg_factor)
+        augmented_images, augmented_labels = augment_data(X_train, labels=y_train_one_hot, use_regmixup=use_regmixup, alpha=alpha, reg_factor=reg_factor)
+        
+        # Combine original data with augmented data (expansion, not replacement)
+        X_train = np.vstack((X_train, augmented_images))
+        y_train_one_hot = np.vstack((y_train_one_hot, augmented_labels))
 
     # Flatten images
     print("Processing flattening images...")
-    X_train = X_train.reshape(X_train.shape[0], -1)  # (50000, 3072)
-    X_test = X_test.reshape(X_test.shape[0], -1)    # (10000, 3072)
+    X_train = X_train.reshape(X_train.shape[0], -1)  # Expanded data (includes augmentation)
+    X_test = X_test.reshape(X_test.shape[0], -1)    # Original test set remains unchanged
 
     # Save processed data to local directory
-    print("Loading processed data to local directory...")
+    print("Saving processed data including expansion to local directory...")
     np.save(os.path.join(save_dir, "X_train.npy"), X_train)
     np.save(os.path.join(save_dir, "y_train.npy"), y_train_one_hot)
     np.save(os.path.join(save_dir, "X_test.npy"), X_test)
@@ -134,4 +138,4 @@ if __name__ == "__main__":
     reg_factor = 0.1  # Perturbation scale for regularization
 
     preprocess_and_save(data_dir, save_dir, augment=augment, use_regmixup=use_regmixup, alpha=alpha, reg_factor=reg_factor)
-    print("Data preprocessing done!")
+    print("Data preprocessing including augmentation done!")
