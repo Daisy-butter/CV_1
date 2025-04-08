@@ -2,6 +2,7 @@ import numpy as np
 import pickle
 import os
 from PIL import Image
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import OneHotEncoder
 
 def load_cifar_batch(file_name):
@@ -45,14 +46,7 @@ def encode_one_hot(labels, num_classes):
     return one_hot
 
 def regmixup_data(images, labels, alpha=0.2, reg_factor=0.1):
-    """
-    Apply RegMixup data augmentation: combines Mixup with regularization.
-    :param images: Numpy array of images.
-    :param labels: Numpy array of one-hot encoded labels.
-    :param alpha: Beta distribution parameter for Mixup.
-    :param reg_factor: Regularization factor scaling the perturbation.
-    :return: Augmented images and labels.
-    """
+    """Apply RegMixup data augmentation."""
     batch_size = images.shape[0]
     lam = np.random.beta(alpha, alpha)
     
@@ -63,7 +57,7 @@ def regmixup_data(images, labels, alpha=0.2, reg_factor=0.1):
     
     # Apply small adversarial perturbation as regularization
     perturbation = np.random.uniform(-reg_factor, reg_factor, size=mixed_images.shape)
-    mixed_images = np.clip(mixed_images + perturbation, 0, 1)  # Ensure values remain normalized
+    mixed_images = np.clip(mixed_images + perturbation, 0, 1)
     
     return mixed_images, mixed_labels
 
@@ -71,10 +65,9 @@ def augment_data(images, labels=None, use_regmixup=False, alpha=0.2, reg_factor=
     """Data augmentation pipeline with RegMixup."""
     augmented_images = []
     for img in images:
-        pil_img = Image.fromarray((img * 255).astype(np.uint8))  # Convert to PIL image
+        pil_img = Image.fromarray((img * 255).astype(np.uint8))
         
-        # Random horizontal flip
-        if np.random.rand() > 0.5:
+        if np.random.rand() > 0.5:  # Random horizontal flip
             pil_img = pil_img.transpose(Image.FLIP_LEFT_RIGHT)
         
         # Random rotation ±15 degrees
@@ -93,49 +86,69 @@ def augment_data(images, labels=None, use_regmixup=False, alpha=0.2, reg_factor=
 
     return augmented_images, labels
 
+def visualize_samples(images, labels=None, title="Sample Images", save_dir="data_preprocess_visualization"):
+    """
+    Visualize and save a random set of images.
+    :param images: Numpy array of images to visualize.
+    :param labels: (Optional) Labels corresponding to the images.
+    :param title: Title for the visualization.
+    :param save_dir: Directory to save the visualization.
+    :return: None
+    """
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Select fixed samples for visualization (first 20 samples)
+    sample_indices = np.arange(20)
+    sampled_images = images[sample_indices]
+    sampled_labels = labels[sample_indices] if labels is not None else None
+
+    # Plot images in a grid (4 rows x 5 columns)
+    fig, axes = plt.subplots(4, 5, figsize=(15, 12))
+    for i, ax in enumerate(axes.flat):
+        ax.imshow((sampled_images[i] * 255).astype(np.uint8))  # Convert from normalized to pixel values [0, 255]
+        ax.axis('off')
+        if sampled_labels is not None:
+            class_label = np.argmax(sampled_labels[i])
+            ax.set_title(f"Label: {class_label}", fontsize=8)
+
+    # Save the figure with the specified title
+    plt.suptitle(title, fontsize=16)
+    save_path = os.path.join(save_dir, f"{title.replace(' ', '_')}.png")
+    plt.savefig(save_path)
+    plt.close()
+
 def preprocess_and_save(data_dir, save_dir, augment=False, use_regmixup=False, alpha=0.2, reg_factor=0.1):
     """Load, augment, preprocess CIFAR-10 data and save locally."""
-    # Load CIFAR-10 data
     X_train, y_train = load_cifar10_train(data_dir)
     X_test, y_test = load_cifar10_test(data_dir)
 
-    # One-hot encode labels BEFORE data augmentation
-    print("Processing one-hot encoding...")
     y_train_one_hot = encode_one_hot(y_train, 10)
     y_test_one_hot = encode_one_hot(y_test, 10)
 
-    # Data augmentation
     if augment:
-        print("Processing data augmentation...")
         augmented_images, augmented_labels = augment_data(X_train, labels=y_train_one_hot, use_regmixup=use_regmixup, alpha=alpha, reg_factor=reg_factor)
         
-        # Combine original data with augmented data (expansion, not replacement)
+        print("Saving original training samples...")
+        visualize_samples(X_train, labels=y_train_one_hot, title="Original Training Samples", save_dir="data_preprocess_visualization")
+        
+        print("Saving augmented training samples...")
+        visualize_samples(augmented_images, labels=augmented_labels, title="Augmented Training Samples", save_dir="data_preprocess_visualization")
+
         X_train = np.vstack((X_train, augmented_images))
         y_train_one_hot = np.vstack((y_train_one_hot, augmented_labels))
 
-    # Flatten images
-    print("Processing flattening images...")
-    X_train = X_train.reshape(X_train.shape[0], -1)  # Expanded data (includes augmentation)
-    X_test = X_test.reshape(X_test.shape[0], -1)    # Original test set remains unchanged
+    X_train = X_train.reshape(X_train.shape[0], -1)
+    X_test = X_test.reshape(X_test.shape[0], -1)
 
-    # Save processed data to local directory
-    print("Saving processed data including expansion to local directory...")
     np.save(os.path.join(save_dir, "X_train.npy"), X_train)
     np.save(os.path.join(save_dir, "y_train.npy"), y_train_one_hot)
     np.save(os.path.join(save_dir, "X_test.npy"), X_test)
     np.save(os.path.join(save_dir, "y_test.npy"), y_test_one_hot)
 
 if __name__ == "__main__":
-    # Raw data directory
     data_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data/cifar-10-batches-py"
-    # Processed data directory
     save_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data"
-
-    # Enable augmentation with RegMixup
     augment = True
     use_regmixup = True
-    alpha = 0.2  # Beta distribution parameter for RegMixup
-    reg_factor = 0.1  # Perturbation scale for regularization
-
-    preprocess_and_save(data_dir, save_dir, augment=augment, use_regmixup=use_regmixup, alpha=alpha, reg_factor=reg_factor)
+    preprocess_and_save(data_dir, save_dir, augment=augment, use_regmixup=use_regmixup)
     print("Data preprocessing including augmentation done!")
