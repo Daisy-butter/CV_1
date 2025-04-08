@@ -67,7 +67,8 @@ def augment_data(images, labels=None, use_regmixup=False, alpha=0.2, reg_factor=
     for img in images:
         pil_img = Image.fromarray((img * 255).astype(np.uint8))
         
-        if np.random.rand() > 0.5:  # Random horizontal flip
+        # Random horizontal flip
+        if np.random.rand() > 0.5:  
             pil_img = pil_img.transpose(Image.FLIP_LEFT_RIGHT)
         
         # Random rotation ±15 degrees
@@ -112,7 +113,7 @@ def visualize_samples(images, labels=None, title="Sample Images", save_dir="data
             ax.set_title(f"Label: {class_label}", fontsize=8)
 
     # Save the figure with the specified title
-    plt.suptitle(title, fontsize=16)
+    plt.suptitle(title, fontsize=28)
     save_path = os.path.join(save_dir, f"{title.replace(' ', '_')}.png")
     plt.savefig(save_path)
     plt.close()
