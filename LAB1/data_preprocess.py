@@ -6,10 +6,9 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import OneHotEncoder
 
 def load_cifar_batch(file_name):
-    """Load CIFAR-10 single batch file."""
     with open(file_name, 'rb') as f:
         batch = pickle.load(f, encoding='bytes')
-        images = batch[b'data']  # 3072 dimensional images
+        images = batch[b'data']
         labels = batch[b'labels']
 
         # Rearrange data into (num_samples, 32, 32, 3), normalize to [0, 1].
@@ -18,7 +17,6 @@ def load_cifar_batch(file_name):
         return images, labels
 
 def load_cifar10_train(data_dir):
-    """Load CIFAR-10 training data."""
     images_list = []
     labels_list = []
     for i in range(1, 6):
@@ -33,20 +31,17 @@ def load_cifar10_train(data_dir):
     return X_train, y_train
 
 def load_cifar10_test(data_dir):
-    """Load CIFAR-10 test data."""
     file_name = os.path.join(data_dir, "test_batch")
     X_test, y_test = load_cifar_batch(file_name)
     return X_test, y_test
 
 def encode_one_hot(labels, num_classes):
-    """One-hot encode labels."""
     encoder = OneHotEncoder(categories='auto', sparse_output=False)
     labels = labels.reshape(-1, 1)
     one_hot = encoder.fit_transform(labels)
     return one_hot
 
 def regmixup_data(images, labels, alpha=0.2, reg_factor=0.1):
-    """Apply RegMixup data augmentation."""
     batch_size = images.shape[0]
     lam = np.random.beta(alpha, alpha)
     
@@ -62,7 +57,6 @@ def regmixup_data(images, labels, alpha=0.2, reg_factor=0.1):
     return mixed_images, mixed_labels
 
 def augment_data(images, labels=None, use_regmixup=False, alpha=0.2, reg_factor=0.1):
-    """Data augmentation pipeline with RegMixup."""
     augmented_images = []
     for img in images:
         pil_img = Image.fromarray((img * 255).astype(np.uint8))
@@ -81,21 +75,12 @@ def augment_data(images, labels=None, use_regmixup=False, alpha=0.2, reg_factor=
 
     augmented_images = np.array(augmented_images)
 
-    # Apply RegMixup if enabled
     if use_regmixup and labels is not None:
         augmented_images, labels = regmixup_data(augmented_images, labels, alpha=alpha, reg_factor=reg_factor)
 
     return augmented_images, labels
 
 def visualize_samples(images, labels=None, title="Sample Images", save_dir="data_preprocess_visualization"):
-    """
-    Visualize and save a random set of images.
-    :param images: Numpy array of images to visualize.
-    :param labels: (Optional) Labels corresponding to the images.
-    :param title: Title for the visualization.
-    :param save_dir: Directory to save the visualization.
-    :return: None
-    """
     os.makedirs(save_dir, exist_ok=True)
 
     # Select fixed samples for visualization (first 20 samples)
@@ -119,7 +104,6 @@ def visualize_samples(images, labels=None, title="Sample Images", save_dir="data
     plt.close()
 
 def preprocess_and_save(data_dir, save_dir, augment=False, use_regmixup=False, alpha=0.2, reg_factor=0.1):
-    """Load, augment, preprocess CIFAR-10 data and save locally."""
     X_train, y_train = load_cifar10_train(data_dir)
     X_test, y_test = load_cifar10_test(data_dir)
 

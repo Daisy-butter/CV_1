@@ -3,11 +3,6 @@ import tarfile
 import urllib.request
 
 def download_cifar10(data_dir):
-    """
-    Download CIFAR-10 dataset from the official URL and extract it to the specified directory.
-    :param data_dir: Directory where the dataset will be downloaded and extracted.
-    """
-    # CIFAR-10 official dataset URL
     cifar10_url = "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
     file_name = "cifar-10-python.tar.gz"
     file_path = os.path.join(data_dir, file_name)
@@ -37,8 +32,6 @@ def download_cifar10(data_dir):
 
 
 if __name__ == "__main__":
-    # Set the data directory
     data_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data"
-
-    # Download and extract the CIFAR-10 dataset
+    
     download_cifar10(data_dir)
