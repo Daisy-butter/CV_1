@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 from MLP_model import retrieve_model_parameters
+
 # Generate heatmap for weights of a layer
 def render_heatmap(weights_matrix, layer_label, save_path):
     plt.figure(figsize=(10, 8))
