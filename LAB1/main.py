@@ -48,7 +48,7 @@ model, best_model, history_train_losses, history_train_accuracies, history_val_l
 )
 
 # 保存最佳模型
-store_model_parameters(best_model, "best_model")
+store_model_parameters(best_model, "best_model_relu")
 
 # 绘制训练曲线
 f, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
