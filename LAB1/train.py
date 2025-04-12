@@ -9,13 +9,13 @@ def optimize_model_parameters(
     lr_initial, 
     lr_decay, 
     regularisation_strength, 
-    dropout_rate,   # 新增 dropout_rate 参数
+    dropout_rate,
     total_epochs, 
     samples_per_batch, 
     activation_fn='leaky_relu'
 ):
     train_size = training_data.shape[0]
-    number_of_batches = train_size // samples_per_batch
+    number_of_batches = train_size
 
     history_loss_train = []
     history_accuracy_train = []
