@@ -32,6 +32,7 @@ def download_cifar10(data_dir):
 
 
 if __name__ == "__main__":
-    data_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data"
+    # Replace with your desired directory path
+    data_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data" 
     
     download_cifar10(data_dir)

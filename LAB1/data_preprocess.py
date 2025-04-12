@@ -131,6 +131,7 @@ def preprocess_and_save(data_dir, save_dir, augment=False, use_regmixup=False, a
     np.save(os.path.join(save_dir, "y_test.npy"), y_test_one_hot)
 
 if __name__ == "__main__":
+    # Replace with the path to your local CIFAR-10 dataset
     data_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data/cifar-10-batches-py"
     save_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data"
     augment = True

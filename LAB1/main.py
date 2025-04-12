@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 
-# 数据路径
+# Replace this with the path to your data directory
 data_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data"
 
 X_train = np.load(f"{data_dir}/X_train.npy")
