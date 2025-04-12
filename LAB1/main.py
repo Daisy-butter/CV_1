@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import numpy as np
 
-# Replace this with the path to your data directory
+# 数据路径
 data_dir = "C:/Users/31521/OneDrive/桌面/files/academic/FDU/25春大三下/计算机视觉/lab_data"
 
 X_train = np.load(f"{data_dir}/X_train.npy")
@@ -52,6 +52,7 @@ store_model_parameters(best_model, "best_model_relu")
 
 # 绘制训练曲线
 f, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
+f.suptitle("Accuracy and Loss", fontsize = 28)
 ax1.plot(history_train_losses, label="Training Loss")
 ax1.plot(history_val_losses, label="Validation Loss")
 ax1.set_xlabel("Epochs")
@@ -67,5 +68,5 @@ ax2.legend()
 ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
 ax2.xaxis.set_major_locator(MaxNLocator(integer=True))
 
-plt.savefig("accuracy_and_loss.png")
+plt.savefig("512_256.png")
 plt.show()

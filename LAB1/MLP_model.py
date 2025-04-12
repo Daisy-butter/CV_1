@@ -61,6 +61,13 @@ def batch_normalization_backward(dout, cache):
 
 # Dropout implementation
 def dropout(x, rate, training=True):
+    """
+    Applies dropout to input x.
+    :param x: Input matrix (batch_size, num_features)
+    :param rate: Dropout rate (fraction of units to drop, e.g., 0.5)
+    :param training: If True, applies dropout; otherwise returns x unchanged.
+    :returns: Dropped-out input
+    """
     if training:
         mask = np.random.binomial(1, 1 - rate, size=x.shape) / (1 - rate)
         return x * mask
