@@ -33,36 +33,36 @@ def render_bias_chart(biases, layer_label, save_path):
     plt.savefig(save_path)
     plt.show()
 
-# Load models and plot parameter visualizations
+# Load models and plot parameter visualizations, you can add more models for different activation functions
 relu_model = retrieve_model_parameters("best_model_relu")
-# sigmoid_model = retrieve_model_parameters("best_model_sigmoid")
+sigmoid_model = retrieve_model_parameters("best_model_sigmoid")
 
 # Heatmaps
 render_heatmap(relu_model["W1"], "W1", "visualization/relu/heatmap/W1.png")
-# render_heatmap(sigmoid_model["W1"], "W1", "output/sigmoid/heatmap/W1.png")
+render_heatmap(sigmoid_model["W1"], "W1", "output/sigmoid/heatmap/W1.png")
 
 render_heatmap(relu_model["W2"], "W2", "visualization/relu/heatmap/W2.png")
-# render_heatmap(sigmoid_model["W2"], "W2", "output/sigmoid/heatmap/W2.png")
+render_heatmap(sigmoid_model["W2"], "W2", "output/sigmoid/heatmap/W2.png")
 
 render_heatmap(relu_model["W3"], "W3", "visualization/relu/heatmap/W3.png")
-# render_heatmap(sigmoid_model["W3"], "W3", "output/sigmoid/heatmap/W3.png")
+render_heatmap(sigmoid_model["W3"], "W3", "output/sigmoid/heatmap/W3.png")
 
 # Histograms
 render_histogram(relu_model["W1"], "W1", "visualization/relu/histogram/W1.png")
-# render_histogram(sigmoid_model["W1"], "W1", "output/sigmoid/histogram/W1.png")
+render_histogram(sigmoid_model["W1"], "W1", "output/sigmoid/histogram/W1.png")
 
 render_histogram(relu_model["W2"], "W2", "visualization/relu/histogram/W2.png")
-# render_histogram(sigmoid_model["W2"], "W2", "output/sigmoid/histogram/W2.png")
+render_histogram(sigmoid_model["W2"], "W2", "output/sigmoid/histogram/W2.png")
 
 render_histogram(relu_model["W3"], "W3", "visualization/relu/histogram/W3.png")
-# render_histogram(sigmoid_model["W3"], "W3", "output/sigmoid/histogram/W3.png")
+render_histogram(sigmoid_model["W3"], "W3", "output/sigmoid/histogram/W3.png")
 
 # Bias charts
 render_bias_chart(relu_model["b1"], "b1", "visualization/relu/biases/b1.png")
-# render_bias_chart(sigmoid_model["b1"], "b1", "output/sigmoid/biases/b1.png")
+render_bias_chart(sigmoid_model["b1"], "b1", "output/sigmoid/biases/b1.png")
 
 render_bias_chart(relu_model["b2"], "b2", "visualization/relu/biases/b2.png")
-# render_bias_chart(sigmoid_model["b2"], "b2", "output/sigmoid/biases/b2.png")
+render_bias_chart(sigmoid_model["b2"], "b2", "output/sigmoid/biases/b2.png")
 
 render_bias_chart(relu_model["b3"], "b3", "visualization/relu/biases/b3.png")
-# render_bias_chart(sigmoid_model["b3"], "b3", "output/sigmoid/biases/b3.png")
+render_bias_chart(sigmoid_model["b3"], "b3", "output/sigmoid/biases/b3.png")

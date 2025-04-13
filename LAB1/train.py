@@ -1,4 +1,5 @@
 from MLP_model import *
+from config import config
 
 def optimize_model_parameters(
     network, 
@@ -12,7 +13,7 @@ def optimize_model_parameters(
     dropout_rate,   # 新增 dropout_rate 参数
     total_epochs, 
     samples_per_batch, 
-    activation_fn='leaky_relu'
+    activation_fn=config.activation
 ):
     train_size = training_data.shape[0]
     number_of_batches = train_size // samples_per_batch

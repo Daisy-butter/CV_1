@@ -1,4 +1,5 @@
 import numpy as np
+from config import config
 import json
 
 # Model parameter handling
@@ -13,14 +14,30 @@ def retrieve_model_parameters(filename):
     return {key: np.array(value) for key, value in model_data.items()}
 
 # Activation functions and their derivatives
-def relu_activation(x):
-    return np.maximum(x, 0)
-
 def leaky_relu_activation(x, alpha=0.01):
     return np.where(x > 0, x, alpha * x)
 
 def derivative_leaky_relu(x, alpha=0.01):
     return np.where(x > 0, 1, alpha)
+
+def sigmoid_activation(x):
+    return 1 / (1 + np.exp(-x))
+
+def derivative_sigmoid(x):
+    sigmoid = 1 / (1 + np.exp(-x))
+    return sigmoid * (1 - sigmoid)
+
+def selu_activation(x, alpha=1.6733, lambda_=1.0507):
+    return lambda_ * np.where(x > 0, x, alpha * (np.exp(x) - 1))
+
+def derivative_selu(x, alpha=1.6733, lambda_=1.0507):
+    return lambda_ * np.where(x > 0, 1, alpha * np.exp(x))
+
+def gelu_activation(x):
+    return 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * x**3)))
+
+def derivative_gelu(x):
+    return 0.5 * (1 + np.erf(x / np.sqrt(2))) + (x / np.sqrt(2 * np.pi)) * np.exp(-x**2 / 2)
 
 def softmax_activation(x):
     e_x = np.exp(x - np.max(x, axis=1, keepdims=True))
@@ -61,13 +78,6 @@ def batch_normalization_backward(dout, cache):
 
 # Dropout implementation
 def dropout(x, rate, training=True):
-    """
-    Applies dropout to input x.
-    :param x: Input matrix (batch_size, num_features)
-    :param rate: Dropout rate (fraction of units to drop, e.g., 0.5)
-    :param training: If True, applies dropout; otherwise returns x unchanged.
-    :returns: Dropped-out input
-    """
     if training:
         mask = np.random.binomial(1, 1 - rate, size=x.shape) / (1 - rate)
         return x * mask
@@ -90,7 +100,7 @@ def setup_model(input_size, hidden_size, output_size):
     return model
 
 # Forward propagation with Batch Normalization and Dropout
-def model_forward_with_bn(model, X, activation='leaky_relu', dropout_rate=0.5, training=True):
+def model_forward_with_bn(model, X, activation=config.activation, dropout_rate=0.5, training=True):
     activations = {}
     caches = {}
 
@@ -102,14 +112,28 @@ def model_forward_with_bn(model, X, activation='leaky_relu', dropout_rate=0.5, t
     # Layer 1
     z1 = X @ W1 + b1
     a1_bn, bn_cache1 = batch_normalization_forward(z1, gamma1, beta1)
-    a1 = leaky_relu_activation(a1_bn) if activation == 'leaky_relu' else relu_activation(a1_bn)
+    if activation == 'leaky_relu':
+        a1 = leaky_relu_activation(a1_bn)
+    if activation == 'sigmoid':
+        a1 = sigmoid_activation(a1_bn)
+    if activation =='selu':
+        a1 = selu_activation(a1_bn)
+    if activation == 'gelu':
+        a1 = gelu_activation(a1_bn)
     a1 = dropout(a1, dropout_rate, training)  # Apply dropout
     activations['a1'], caches['bn1'] = a1, bn_cache1
 
     # Layer 2
     z2 = a1 @ W2 + b2
     a2_bn, bn_cache2 = batch_normalization_forward(z2, gamma2, beta2)
-    a2 = leaky_relu_activation(a2_bn) if activation == 'leaky_relu' else relu_activation(a2_bn)
+    if activation == 'leaky_relu':
+        a2 = leaky_relu_activation(a2_bn)
+    if activation == 'sigmoid':
+        a2 = sigmoid_activation(a2_bn)
+    if activation =='selu':
+        a2 = selu_activation(a2_bn)
+    if activation == 'gelu':
+        a2 = gelu_activation(a2_bn)
     a2 = dropout(a2, dropout_rate, training)  # Apply dropout
     activations['a2'], caches['bn2'] = a2, bn_cache2
 
@@ -120,7 +144,7 @@ def model_forward_with_bn(model, X, activation='leaky_relu', dropout_rate=0.5, t
 
     return a3, activations, caches
 
-def model_backward_with_bn(model, activations, caches, X, y, y_hat, reg_strength, activation='leaky_relu'):
+def model_backward_with_bn(model, activations, caches, X, y, y_hat, reg_strength, activation=config.activation):
     gradients = {}
     W1, W2, W3 = model['W1'], model['W2'], model['W3']
     gamma1, gamma2 = model['gamma1'], model['gamma2']
@@ -134,6 +158,12 @@ def model_backward_with_bn(model, activations, caches, X, y, y_hat, reg_strength
     da2 = error @ W3.T
     if activation == 'leaky_relu':
         da2 *= derivative_leaky_relu(activations['a2'])
+    if activation == 'sigmoid':
+        da2 *= derivative_sigmoid(activations['a2'])
+    if activation == 'selu':
+        da2 *= derivative_selu(activations['a2'])
+    if activation == 'gelu':
+        da2 *= derivative_gelu(activations['a2'])
     dz2, dgamma2, dbeta2 = batch_normalization_backward(da2, caches['bn2'])
     gradients['dW2'] = activations['a1'].T @ dz2 + reg_strength * W2
     gradients['db2'] = np.sum(dz2, axis=0)
@@ -143,6 +173,12 @@ def model_backward_with_bn(model, activations, caches, X, y, y_hat, reg_strength
     da1 = dz2 @ W2.T
     if activation == 'leaky_relu':
         da1 *= derivative_leaky_relu(activations['a1'])
+    if activation == 'sigmoid':
+        da1 *= derivative_sigmoid(activations['a1'])
+    if activation == 'selu':
+        da1 *= derivative_selu(activations['a1'])
+    if activation == 'gelu':
+        da1 *= derivative_gelu(activations['a1'])
     dz1, dgamma1, dbeta1 = batch_normalization_backward(da1, caches['bn1'])
     gradients['dW1'] = X.T @ dz1 + reg_strength * W1
     gradients['db1'] = np.sum(dz1, axis=0)
