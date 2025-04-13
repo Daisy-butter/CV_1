@@ -2,7 +2,7 @@
 
 ## Welcome to Our Machine Learning Project 👩‍💻🧠
 
-Hey there, fellow developer! Are you ready to dive into a world of data processing, model training, and attention mechanisms? This README will guide you through the setup and workflow for our project, step by step. Whether you're a rookie or a seasoned pro, we've got you covered. Let's do this! 🚀
+Hey there, fellow developer! Are you ready to dive into MLP model? This README will guide you through the setup and workflow for our project, step by step. Whether you're a rookie or a seasoned pro, we've got you covered. Let's do this! 🚀
 
 ---
 
@@ -62,6 +62,6 @@ We all know that sometimes things don't go as planned. If you hit a roadblock, d
 
 ## Ready, Set, Code! 🎉  
 
-Now you’re all set to conquer the world of machine learning. No matter if you're preprocessing data, fine-tuning hyperparameters, or exploring attention mechanisms, this project has something for everyone. And hey, don’t forget to have fun — because coding is always better with a smile! 😄
+Now you’re all set to conquer this project of MLP. No matter if you're preprocessing data, fine-tuning hyperparameters, or exploring attention mechanisms, this project has something for everyone. And hey, don’t forget to have fun — because coding is always better with a smile! 😄
 
 Happy coding! 💻✨
