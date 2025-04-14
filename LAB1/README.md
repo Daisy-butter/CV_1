@@ -1,6 +1,6 @@
 # README.md
 
-## Welcome to Our Machine Learning Project 👩‍💻🧠
+## Welcome to Our Multi-Layer Perceptron Project 👩‍💻🧠
 
 Hey there, fellow developer! Are you ready to dive into MLP model? This README will guide you through the setup and workflow for our project, step by step. Whether you're a rookie or a seasoned pro, we've got you covered. Let's do this! 🚀
 
