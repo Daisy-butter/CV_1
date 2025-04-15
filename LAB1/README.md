@@ -56,7 +56,7 @@ Feeling adventurous? Then it's time to dive into the world of **attention mechan
 
 ## Troubleshooting 🛠️  
 
-We all know that sometimes things don't go as planned. If you hit a roadblock, don't sweat it — mistakes are just opportunities to learn! Feel free to reach out to us at **22307140084@m.fudan.edu.cn**, and we'll get back to you faster than a GPU can train a model.  
+We all know that sometimes things don't go as planned. If you hit a roadblock, don't sweat it — mistakes are just opportunities to learn! Feel free to reach out to us at **22307140084@m.fudan.edu.cn**, and we'll get back to you faster than a GPU can train a model.  If you have any idea about the attention mechanism, welcome to communicate with us as well!
 
 ---
 
