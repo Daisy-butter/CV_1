@@ -1,4 +1,4 @@
-# Computer_Vision_MLP
+# 3-Layer-Perceptron
 
 ## Welcome to Our Multi-Layer Perceptron Project 👩‍💻🧠
 
